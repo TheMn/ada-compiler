@@ -1,2 +1,2 @@
 # ada-compiler
-guilan university comiler project
+guilan university compiler project
