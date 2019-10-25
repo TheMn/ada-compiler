@@ -1,0 +1,29 @@
+procedure f1 is
+	-- function as a subprogram
+	function sum_sqr(X, Y: float; w, z : integer) return float is
+		I, J : boolean;
+	begin
+		-- w := "salam";
+		I := J;
+	end;
+	-- condition : boolean := true;
+	sentence : string;
+	number, adad, temp : integer;
+	flfl : float;
+begin
+	condition := false;
+	sentence := "salam";
+	number := 12; -- 016#0ff#
+	adad := 2.5;
+	--adad := sentence;
+	if adad < 4 then
+		loop
+			put("hello world");
+			exit when i = x;
+		end loop;
+		put(12.5);
+	else
+		put("bye");
+	end if;
+	temp := sum_sqr(flfl, flfl, number, 12);
+end f1;

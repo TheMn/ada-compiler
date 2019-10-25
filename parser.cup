@@ -1,0 +1,357 @@
+/*
+   Simple +/-/* expression language; 
+   parser evaluates constant expressions on the fly
+*/
+
+package cup.example;
+
+import java_cup.runtime.*;
+import cup.example.Lexer;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Map;
+
+
+parser code {:
+  protected Lexer lexer;
+  protected HashMap<DataType, HashMap<String, Object>> variables = new HashMap<DataType, HashMap<String, Object>>();
+  protected HashMap<DataType, HashMap<String, ArrayList<DataType>>> functions = new HashMap<DataType, HashMap<String,ArrayList<DataType>>>();
+  
+  enum DataType{
+	  INT_ADA, FLOAT_ADA, STRING_ADA, BOOL_ADA, CHAR_ADA;
+  }
+:}
+
+/* define how to connect to the scanner! */
+init with {:
+
+  for (DataType dt : DataType.values()) 
+	  variables.put(dt, new HashMap<String, Object>());
+  
+  for (DataType dt : DataType.values()) 
+	  functions.put(dt, new HashMap<String, ArrayList<DataType>>());
+
+  ComplexSymbolFactory c = new ComplexSymbolFactory();
+  symbolFactory = c;
+  File file = new File("input.txt");
+  FileInputStream fis = null;
+  try {
+    fis = new FileInputStream(file);
+  } catch (IOException e) {
+    e.printStackTrace();
+  } 
+  lexer = new Lexer(c,fis);
+:};
+
+
+action code {:
+	protected DataType type = DataType.BOOL_ADA;
+	protected ArrayList<DataType> param = new ArrayList<DataType>();
+	protected String gbName;
+	protected DataType gbReturnType, gbType;
+	protected ArrayList<DataType> gbParameters = new ArrayList<DataType>();
+	protected ArrayList<String> paramList = new ArrayList<String>();
+	protected Object gbContent;
+
+	public void declareFunction(String name, DataType returnType, ArrayList<DataType> parameters) {
+		//System.out.println("$$$ " + returnType + " " +name + " function declared " + parameters.toString());
+		functions.get(returnType).put(name, parameters);
+	}
+	
+	public boolean functionIsDeclared(String name, ArrayList<DataType> parameters) {
+		for (DataType declaredReturnType : DataType.values()) {
+			for (Map.Entry<String, ArrayList<DataType>> eachFunction : functions.get(declaredReturnType).entrySet()) {
+				if (eachFunction.getKey().equals(name)) {
+					if(eachFunction.getValue().size() == parameters.size()) {
+						for (int i = 0; i < eachFunction.getValue().size(); i++) {
+							//System.out.println(eachFunction.getValue().get(i) + " ++++++");
+							//System.out.println(parameters.get(i) + " ******");
+							if (eachFunction.getValue().get(eachFunction.getValue().size() - i - 1) != parameters.get(i))
+								return false;
+						}
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	public void declareVariable(DataType dt, String name, Object value) {
+		System.out.println(name + " declared as " + dt + " = " + value);
+		switch (dt) {
+		case BOOL_ADA:
+			variables.get(dt).put(name, (Boolean)value);
+			break;
+		case CHAR_ADA:
+			variables.get(dt).put(name, (Character)value);
+			break;
+		case FLOAT_ADA:
+			variables.get(dt).put(name, (Float)value);
+			break;
+		case INT_ADA:
+			variables.get(dt).put(name, (Integer)value); // TODO: specific decimal literal in ada
+			break;
+		case STRING_ADA:
+			variables.get(dt).put(name, (String)value);
+			break;
+		default:
+			break;
+		}
+	}
+
+	public boolean inSameType(String first, String second) {
+		for (DataType dt : DataType.values()) {
+			if(variables.get(dt).containsKey(first) && variables.get(dt).containsKey(second))
+				return true;
+		}	
+		return false;
+	}
+
+	public boolean checkType(String name, DataType dt) {
+		return variables.get(dt).containsKey(name);
+	}
+
+	public boolean declaredBefore(String name) {
+		for (DataType dt : DataType.values()) {
+			if(variables.get(dt).containsKey(name))
+				return true;
+		}	
+		return false;
+	}
+	
+	public void assignVariable(String name, Object value) {
+		for (DataType dt : DataType.values()) {
+			variables.get(dt).replace(name, value);
+		}
+	}
+
+	public DataType getTypeOf(String name) {
+		for (DataType dt : DataType.values()) {
+			if(variables.get(dt).containsKey(name))
+				return dt;
+		}
+		return null;
+	}
+:};
+
+scan with {: return lexer.next_token(); :};
+
+/* Terminals (tokens returned by the scanner). */
+terminal 			ABORT, ABS, ABSTRACT, ACCEPT, ACCESS, ALIASED, ALL, AND,
+					ARRAY, AT, BEGIN, BODY, CASE, CONSTANT, DECLARE, DELAY,
+					DELTA, DIGITS, DO, ELSE, ELSIF, END, ENTRY, EXCEPTION,
+					EXIT, FOR, FUNCTION, GENERIC, GOTO, IF, IN, INTERFACE,
+					IS, LIMITED, LOOP, MOD, NEW, NULL, NOT, OF, OR, OTHERS,
+					OUT, OVERRIDING, PACKAGE, PRAGMA, PRIVATE, PROCEDURE, PROTECTED,
+					RAISE, RANGE, RECORD, REM, RENAMES, REQUEUE, RETURN, REVERSE,
+					SELECT, SEPARATE, SUBTYPE, SYNCHRONIZED, TAGGED, TASK,
+					TERMINATE, THEN, TYPE, UNTIL, USE, WHEN, WHILE, WITH, XOR;
+
+terminal			ARROW, DOUBLE_DOT, DOUBLE_STAR, ASSIGNMENT, LLABEL, RLABEL,
+					COMPARE, LOGICAL_AND, APOSTROPHE, OPARENTHESIS, CPARENTHESIS,
+					TIMES, PLUS, COMMA, MINUS, DOT, SLASH, COLON, LOGICAL_OR;
+terminal Integer	SEMI;
+terminal 			TRUE, FALSE, INT, FLOAT, BOOLEAN, STR_TYP, CHAR;
+terminal			PUT, GET;
+// decimal_literal = new Integer(yytext())
+// based_literal = new Integer.parseInt(s.split("#")[1]+s.split("#")[2], Integer.parseInt(s.split("#")[0]))
+terminal String		DECIMAL_LITERAL, BASED_LITERAL, IDENTIFIER; // TODO: convert number to java format
+
+terminal String 	STR;
+
+non terminal 		main_body, statements;
+non terminal 		func_statements, main_statements;
+non terminal 		arguments, ada_type, primary_statements, body_statements;
+non terminal		declare_arguments, identifiers_list;
+non terminal 		declare_variables, declare_array;
+non terminal 		array_dim, number_format;
+non terminal 		assignment, math_expression, a, b, d, c, low_lvl_op, high_lvl_op;
+non terminal 		call_subprogram, parameter_values;
+non terminal 		put_statements, put_content; //, get_statements, get_content;
+non terminal 		if_statements, elsif_statements, else_statements, condition, boolean_expression, operand;
+non terminal 		loop_statements, for_statements, exit_cycle, while_statements;
+
+main_body			::= PROCEDURE IDENTIFIER IS main_statements
+							{:	System.out.println("parsed successfully"); 
+								System.out.println(variables.toString());
+								System.out.println(functions.toString()); :};
+						
+main_statements		::= primary_statements BEGIN body_statements END IDENTIFIER SEMI
+						| BEGIN body_statements END IDENTIFIER SEMI; // done
+
+
+put_statements 		::= PUT OPARENTHESIS put_content:p CPARENTHESIS
+							{: System.out.println("##### " + p + " #####"); :};
+
+put_content			::= number_format:nf {: RESULT = nf; :}
+						| STR:s {: RESULT = s; :} ; // done
+
+func_statements		::= FUNCTION IDENTIFIER:id {: gbName = id; :} arguments {: gbParameters = param; :} RETURN ada_type {: gbReturnType = type; :} IS primary_statements BEGIN body_statements END SEMI
+							{: declareFunction(gbName, gbReturnType, new ArrayList<DataType>(gbParameters)); :}; // done
+			
+arguments			::= OPARENTHESIS declare_arguments CPARENTHESIS; // done
+
+declare_arguments	::= identifiers_list COLON ada_type SEMI 
+							{:	for (String paramId : paramList) {
+									declareVariable(type, paramId, null);
+									param.add(type);
+								}
+								paramList.clear();
+							:} declare_arguments
+						| identifiers_list COLON ada_type
+							{:	for (String paramId : paramList) {
+									declareVariable(type, paramId, null);
+									param.add(type);
+								}
+								paramList.clear();
+							:}; // done
+
+identifiers_list 	::= IDENTIFIER:id COMMA identifiers_list
+							{:	paramList.add(id); :}
+						| IDENTIFIER:id
+							{:	paramList.add(id); :};
+
+ada_type			::= INT
+							{: type = DataType.INT_ADA; :}
+						| FLOAT 
+							{: type = DataType.FLOAT_ADA; :}
+						| BOOLEAN 
+							{: type = DataType.BOOL_ADA; :}
+						| STR_TYP 
+							{: type = DataType.STRING_ADA; :}
+						| CHAR
+							{: type = DataType.CHAR_ADA; :}; //done
+		
+primary_statements	::= declare_variables primary_statements
+						| declare_variables
+						| declare_array primary_statements
+						| declare_array
+						| func_statements primary_statements
+						| func_statements; // TODO: add another statements (expr_list)
+
+declare_variables	::= IDENTIFIER:id COMMA declare_variables
+							{:	declareVariable(type, id, null); :}
+						| IDENTIFIER:id COLON ada_type SEMI
+							{:	declareVariable(type, id, null); :};
+
+declare_array 		::= IDENTIFIER COLON ARRAY OPARENTHESIS array_dim CPARENTHESIS OF ada_type SEMI; // done
+
+array_dim			::= ada_type
+						| number_format DOUBLE_DOT number_format; // done
+
+number_format 		::= DECIMAL_LITERAL:dl //TODO:...
+							{:	type = DataType.INT_ADA;
+								gbContent = dl;
+								RESULT = dl; :}
+						| BASED_LITERAL:bl
+							{:	type = DataType.INT_ADA; 
+								gbContent = bl;
+								RESULT = bl; :}; // TODO
+
+body_statements 	::= assignment body_statements 
+						| assignment
+						| call_subprogram SEMI body_statements
+						| call_subprogram SEMI
+						| put_statements SEMI body_statements 
+						| put_statements SEMI
+						| if_statements body_statements 
+						| if_statements
+						| loop_statements body_statements 
+						| loop_statements
+						| for_statements body_statements 
+						| for_statements
+						| while_statements body_statements 
+						| while_statements;
+
+assignment			::= IDENTIFIER:id ASSIGNMENT math_expression SEMI
+							{:	type = getTypeOf(id);
+								assignVariable(id, gbContent); :}
+						| IDENTIFIER:id ASSIGNMENT call_subprogram SEMI
+							{:	type = getTypeOf(id); :}
+							//{: System.out.println("~~ function returned value assigned"); :}
+						| IDENTIFIER:id ASSIGNMENT STR:content SEMI:line
+							{:	if(checkType(id, DataType.STRING_ADA)) {
+									assignVariable(id, content);
+									System.out.println(id + " <~~~ " + content);
+								} else {
+									System.err.println(id + " at line " + line + " is not string");
+								}
+							:}
+						| IDENTIFIER ASSIGNMENT TRUE SEMI
+						| IDENTIFIER ASSIGNMENT FALSE SEMI; // done
+
+math_expression 	::= a b;
+b 					::= low_lvl_op a b |;
+a 					::= c d;
+d 					::= high_lvl_op c d |;
+	
+low_lvl_op			::= PLUS 
+						| MINUS; // done
+
+high_lvl_op			::= TIMES
+						| SLASH; // done
+
+c 					::= IDENTIFIER:id
+							{:	if(!checkType(id, type)){
+									System.err.println(id + " should be " + type);
+								}
+								gbContent = id;
+							:}
+						| number_format 
+						| OPARENTHESIS math_expression CPARENTHESIS; // TODO: check math expressions
+
+loop_statements 	::= LOOP body_statements exit_cycle END LOOP SEMI;
+
+for_statements 		::= FOR IDENTIFIER IN number_format DOUBLE_DOT number_format LOOP body_statements exit_cycle END LOOP SEMI;
+
+while_statements	::= WHILE condition LOOP body_statements exit_cycle END LOOP SEMI;
+
+exit_cycle 			::= EXIT WHEN condition SEMI |; // TODO: check exit state
+
+if_statements 		::= IF condition THEN body_statements elsif_statements else_statements END IF SEMI; // done
+
+elsif_statements 	::= ELSIF condition THEN body_statements elsif_statements|; // done
+
+else_statements		::= ELSE body_statements|; // done
+
+condition			::= boolean_expression OR condition
+						| boolean_expression AND condition
+						| boolean_expression XOR condition
+						| boolean_expression; // done
+
+boolean_expression	::= operand COMPARE operand; // done
+
+operand				::= IDENTIFIER 
+						| number_format
+						| call_subprogram; // done
+
+call_subprogram		::= IDENTIFIER:id {: param.clear(); :} OPARENTHESIS parameter_values CPARENTHESIS
+							{:	
+								//System.out.println(functions.toString() + " ***FUNCTIONS***");
+								//System.out.println("%%%% " + param.toString() + "%%%%");
+								boolean satisfied = false;
+								if (functionIsDeclared(id, param))
+									satisfied = true;
+								//System.out.println("----------- is it satisfied ? " + satisfied);
+								if(!satisfied)
+									System.err.println(id + " is not declared in this style");
+								param.clear();
+							:};
+
+parameter_values	::= IDENTIFIER:id COMMA parameter_values
+							{: param.add(getTypeOf(id)); :}
+						| IDENTIFIER:id
+							{: param.add(getTypeOf(id)); :}
+						| number_format COMMA parameter_values
+							{: param.add(type); :}
+						| number_format
+							{: param.add(type); :}
+						| STR COMMA parameter_values
+							{: param.add(DataType.STRING_ADA); :}
+						| STR
+							{: param.add(DataType.STRING_ADA); :}; // done
