@@ -225,4 +225,3 @@ public interface sym {
   "STR"
   };
 }
-

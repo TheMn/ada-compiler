@@ -1,7 +1,10 @@
-/*
-   Simple +/-/* expression language; 
-   parser evaluates constant expressions on the fly
-*/
+/**
+ * This CUP file defines the parser for a subset of the Ada programming language.
+ * It specifies the grammar of the language, including statements, expressions,
+ * and declarations. The embedded action code performs semantic checks, such as
+ * type checking and scope analysis, and builds symbol tables for variables and
+ * functions.
+ */
 
 package cup.example;
 
@@ -20,7 +23,10 @@ parser code {:
   protected Lexer lexer;
   protected HashMap<DataType, HashMap<String, Object>> variables = new HashMap<DataType, HashMap<String, Object>>();
   protected HashMap<DataType, HashMap<String, ArrayList<DataType>>> functions = new HashMap<DataType, HashMap<String,ArrayList<DataType>>>();
-  
+
+  /**
+   * Enum representing the data types supported by the language.
+   */
   enum DataType{
 	  INT_ADA, FLOAT_ADA, STRING_ADA, BOOL_ADA, CHAR_ADA;
   }
@@ -29,10 +35,10 @@ parser code {:
 /* define how to connect to the scanner! */
 init with {:
 
-  for (DataType dt : DataType.values()) 
+  for (DataType dt : DataType.values())
 	  variables.put(dt, new HashMap<String, Object>());
-  
-  for (DataType dt : DataType.values()) 
+
+  for (DataType dt : DataType.values())
 	  functions.put(dt, new HashMap<String, ArrayList<DataType>>());
 
   ComplexSymbolFactory c = new ComplexSymbolFactory();
@@ -43,25 +49,48 @@ init with {:
     fis = new FileInputStream(file);
   } catch (IOException e) {
     e.printStackTrace();
-  } 
+  }
   lexer = new Lexer(c,fis);
 :};
 
 
 action code {:
+    /** The current data type being processed by the parser. Defaults to BOOL_ADA. */
 	protected DataType type = DataType.BOOL_ADA;
+    /** A list of data types for the parameters of a function being declared or called. */
 	protected ArrayList<DataType> param = new ArrayList<DataType>();
+    /** The name of the function or variable currently being processed. */
 	protected String gbName;
-	protected DataType gbReturnType, gbType;
+    /** The return type of a function being declared. */
+	protected DataType gbReturnType;
+    /** The data type of a variable or expression being processed. */
+    protected DataType gbType;
+    /** A list of parameter types for a function being declared. */
 	protected ArrayList<DataType> gbParameters = new ArrayList<DataType>();
+    /** A list of parameter names for a function being declared. */
 	protected ArrayList<String> paramList = new ArrayList<String>();
+    /** The content or value of a variable or expression. */
 	protected Object gbContent;
 
+    /**
+     * Declares a function by storing its name, return type, and parameter types.
+     *
+     * @param name The name of the function.
+     * @param returnType The return type of the function.
+     * @param parameters A list of data types for the function's parameters.
+     */
 	public void declareFunction(String name, DataType returnType, ArrayList<DataType> parameters) {
 		//System.out.println("$$$ " + returnType + " " +name + " function declared " + parameters.toString());
 		functions.get(returnType).put(name, parameters);
 	}
-	
+
+    /**
+     * Checks if a function has been declared with a specific signature.
+     *
+     * @param name The name of the function to check.
+     * @param parameters A list of data types for the function's parameters.
+     * @return {@code true} if the function is declared with the given signature, {@code false} otherwise.
+     */
 	public boolean functionIsDeclared(String name, ArrayList<DataType> parameters) {
 		for (DataType declaredReturnType : DataType.values()) {
 			for (Map.Entry<String, ArrayList<DataType>> eachFunction : functions.get(declaredReturnType).entrySet()) {
@@ -81,6 +110,13 @@ action code {:
 		return false;
 	}
 
+    /**
+     * Declares a variable by storing its type, name, and initial value in the symbol table.
+     *
+     * @param dt The data type of the variable.
+     * @param name The name of the variable.
+     * @param value The initial value of the variable.
+     */
 	public void declareVariable(DataType dt, String name, Object value) {
 		System.out.println(name + " declared as " + dt + " = " + value);
 		switch (dt) {
@@ -104,32 +140,64 @@ action code {:
 		}
 	}
 
+    /**
+     * Checks if two variables have the same data type.
+     *
+     * @param first The name of the first variable.
+     * @param second The name of the second variable.
+     * @return {@code true} if both variables are declared and have the same type, {@code false} otherwise.
+     */
 	public boolean inSameType(String first, String second) {
 		for (DataType dt : DataType.values()) {
 			if(variables.get(dt).containsKey(first) && variables.get(dt).containsKey(second))
 				return true;
-		}	
+		}
 		return false;
 	}
 
+    /**
+     * Checks if a variable is of a specific data type.
+     *
+     * @param name The name of the variable.
+     * @param dt The data type to check against.
+     * @return {@code true} if the variable is declared with the specified type, {@code false} otherwise.
+     */
 	public boolean checkType(String name, DataType dt) {
 		return variables.get(dt).containsKey(name);
 	}
 
+    /**
+     * Checks if a variable has been declared.
+     *
+     * @param name The name of the variable to check.
+     * @return {@code true} if the variable is found in the symbol table, {@code false} otherwise.
+     */
 	public boolean declaredBefore(String name) {
 		for (DataType dt : DataType.values()) {
 			if(variables.get(dt).containsKey(name))
 				return true;
-		}	
+		}
 		return false;
 	}
-	
+
+    /**
+     * Assigns a new value to a declared variable.
+     *
+     * @param name The name of the variable.
+     * @param value The new value to assign.
+     */
 	public void assignVariable(String name, Object value) {
 		for (DataType dt : DataType.values()) {
 			variables.get(dt).replace(name, value);
 		}
 	}
 
+    /**
+     * Retrieves the data type of a declared variable.
+     *
+     * @param name The name of the variable.
+     * @return The {@link DataType} of the variable, or {@code null} if the variable is not found.
+     */
 	public DataType getTypeOf(String name) {
 		for (DataType dt : DataType.values()) {
 			if(variables.get(dt).containsKey(name))
@@ -141,7 +209,12 @@ action code {:
 
 scan with {: return lexer.next_token(); :};
 
-/* Terminals (tokens returned by the scanner). */
+/*
+ * Terminals (tokens returned by the scanner). These represent the basic
+ * building blocks of the language.
+ */
+
+/* Ada reserved keywords. */
 terminal 			ABORT, ABS, ABSTRACT, ACCEPT, ACCESS, ALIASED, ALL, AND,
 					ARRAY, AT, BEGIN, BODY, CASE, CONSTANT, DECLARE, DELAY,
 					DELTA, DIGITS, DO, ELSE, ELSIF, END, ENTRY, EXCEPTION,
@@ -152,18 +225,27 @@ terminal 			ABORT, ABS, ABSTRACT, ACCEPT, ACCESS, ALIASED, ALL, AND,
 					SELECT, SEPARATE, SUBTYPE, SYNCHRONIZED, TAGGED, TASK,
 					TERMINATE, THEN, TYPE, UNTIL, USE, WHEN, WHILE, WITH, XOR;
 
+/* Operators and delimiters. */
 terminal			ARROW, DOUBLE_DOT, DOUBLE_STAR, ASSIGNMENT, LLABEL, RLABEL,
 					COMPARE, LOGICAL_AND, APOSTROPHE, OPARENTHESIS, CPARENTHESIS,
 					TIMES, PLUS, COMMA, MINUS, DOT, SLASH, COLON, LOGICAL_OR;
+/* Special terminal for semicolon, carrying line number information. */
 terminal Integer	SEMI;
+/* Terminals for data types and boolean values. */
 terminal 			TRUE, FALSE, INT, FLOAT, BOOLEAN, STR_TYP, CHAR;
+/* Terminals for I/O operations. */
 terminal			PUT, GET;
+
+/* Terminals for literals, carrying their string representation. */
 // decimal_literal = new Integer(yytext())
 // based_literal = new Integer.parseInt(s.split("#")[1]+s.split("#")[2], Integer.parseInt(s.split("#")[0]))
 terminal String		DECIMAL_LITERAL, BASED_LITERAL, IDENTIFIER; // TODO: convert number to java format
 
 terminal String 	STR;
 
+/*
+ * Non-terminal symbols. These represent the syntactic constructs of the language.
+ */
 non terminal 		main_body, statements;
 non terminal 		func_statements, main_statements;
 non terminal 		arguments, ada_type, primary_statements, body_statements;
@@ -176,27 +258,34 @@ non terminal 		put_statements, put_content; //, get_statements, get_content;
 non terminal 		if_statements, elsif_statements, else_statements, condition, boolean_expression, operand;
 non terminal 		loop_statements, for_statements, exit_cycle, while_statements;
 
+/* The entry point of the program. */
 main_body			::= PROCEDURE IDENTIFIER IS main_statements
-							{:	System.out.println("parsed successfully"); 
+							{:	System.out.println("parsed successfully");
 								System.out.println(variables.toString());
 								System.out.println(functions.toString()); :};
-						
+
+/* The main block of statements in the procedure. */
 main_statements		::= primary_statements BEGIN body_statements END IDENTIFIER SEMI
 						| BEGIN body_statements END IDENTIFIER SEMI; // done
 
 
+/* A statement to print content to the console. */
 put_statements 		::= PUT OPARENTHESIS put_content:p CPARENTHESIS
 							{: System.out.println("##### " + p + " #####"); :};
 
+/* The content to be printed by a put_statement. */
 put_content			::= number_format:nf {: RESULT = nf; :}
 						| STR:s {: RESULT = s; :} ; // done
 
+/* A function declaration and definition. */
 func_statements		::= FUNCTION IDENTIFIER:id {: gbName = id; :} arguments {: gbParameters = param; :} RETURN ada_type {: gbReturnType = type; :} IS primary_statements BEGIN body_statements END SEMI
 							{: declareFunction(gbName, gbReturnType, new ArrayList<DataType>(gbParameters)); :}; // done
-			
+
+/* The arguments of a function. */
 arguments			::= OPARENTHESIS declare_arguments CPARENTHESIS; // done
 
-declare_arguments	::= identifiers_list COLON ada_type SEMI 
+/* The declaration of arguments for a function. */
+declare_arguments	::= identifiers_list COLON ada_type SEMI
 							{:	for (String paramId : paramList) {
 									declareVariable(type, paramId, null);
 									param.add(type);
@@ -211,22 +300,25 @@ declare_arguments	::= identifiers_list COLON ada_type SEMI
 								paramList.clear();
 							:}; // done
 
+/* A list of identifiers. */
 identifiers_list 	::= IDENTIFIER:id COMMA identifiers_list
 							{:	paramList.add(id); :}
 						| IDENTIFIER:id
 							{:	paramList.add(id); :};
 
+/* The data types supported by the language. */
 ada_type			::= INT
 							{: type = DataType.INT_ADA; :}
-						| FLOAT 
+						| FLOAT
 							{: type = DataType.FLOAT_ADA; :}
-						| BOOLEAN 
+						| BOOLEAN
 							{: type = DataType.BOOL_ADA; :}
-						| STR_TYP 
+						| STR_TYP
 							{: type = DataType.STRING_ADA; :}
 						| CHAR
 							{: type = DataType.CHAR_ADA; :}; //done
-		
+
+/* Statements that can appear in the primary (declarative) part of a block. */
 primary_statements	::= declare_variables primary_statements
 						| declare_variables
 						| declare_array primary_statements
@@ -234,40 +326,46 @@ primary_statements	::= declare_variables primary_statements
 						| func_statements primary_statements
 						| func_statements; // TODO: add another statements (expr_list)
 
+/* A variable declaration. */
 declare_variables	::= IDENTIFIER:id COMMA declare_variables
 							{:	declareVariable(type, id, null); :}
 						| IDENTIFIER:id COLON ada_type SEMI
 							{:	declareVariable(type, id, null); :};
 
+/* An array declaration. */
 declare_array 		::= IDENTIFIER COLON ARRAY OPARENTHESIS array_dim CPARENTHESIS OF ada_type SEMI; // done
 
+/* The dimension of an array. */
 array_dim			::= ada_type
 						| number_format DOUBLE_DOT number_format; // done
 
+/* A numeric literal. */
 number_format 		::= DECIMAL_LITERAL:dl //TODO:...
 							{:	type = DataType.INT_ADA;
 								gbContent = dl;
 								RESULT = dl; :}
 						| BASED_LITERAL:bl
-							{:	type = DataType.INT_ADA; 
+							{:	type = DataType.INT_ADA;
 								gbContent = bl;
 								RESULT = bl; :}; // TODO
 
-body_statements 	::= assignment body_statements 
+/* Statements that can appear in the body of a block. */
+body_statements 	::= assignment body_statements
 						| assignment
 						| call_subprogram SEMI body_statements
 						| call_subprogram SEMI
-						| put_statements SEMI body_statements 
+						| put_statements SEMI body_statements
 						| put_statements SEMI
-						| if_statements body_statements 
+						| if_statements body_statements
 						| if_statements
-						| loop_statements body_statements 
+						| loop_statements body_statements
 						| loop_statements
-						| for_statements body_statements 
+						| for_statements body_statements
 						| for_statements
-						| while_statements body_statements 
+						| while_statements body_statements
 						| while_statements;
 
+/* An assignment statement. */
 assignment			::= IDENTIFIER:id ASSIGNMENT math_expression SEMI
 							{:	type = getTypeOf(id);
 								assignVariable(id, gbContent); :}
@@ -285,53 +383,68 @@ assignment			::= IDENTIFIER:id ASSIGNMENT math_expression SEMI
 						| IDENTIFIER ASSIGNMENT TRUE SEMI
 						| IDENTIFIER ASSIGNMENT FALSE SEMI; // done
 
+/* A mathematical expression. */
 math_expression 	::= a b;
 b 					::= low_lvl_op a b |;
 a 					::= c d;
 d 					::= high_lvl_op c d |;
-	
-low_lvl_op			::= PLUS 
+
+/* Low-level operators (+, -). */
+low_lvl_op			::= PLUS
 						| MINUS; // done
 
+/* High-level operators (*, /). */
 high_lvl_op			::= TIMES
 						| SLASH; // done
 
+/* A component of a mathematical expression. */
 c 					::= IDENTIFIER:id
 							{:	if(!checkType(id, type)){
 									System.err.println(id + " should be " + type);
 								}
 								gbContent = id;
 							:}
-						| number_format 
+						| number_format
 						| OPARENTHESIS math_expression CPARENTHESIS; // TODO: check math expressions
 
+/* A loop statement. */
 loop_statements 	::= LOOP body_statements exit_cycle END LOOP SEMI;
 
+/* A for loop statement. */
 for_statements 		::= FOR IDENTIFIER IN number_format DOUBLE_DOT number_format LOOP body_statements exit_cycle END LOOP SEMI;
 
+/* A while loop statement. */
 while_statements	::= WHILE condition LOOP body_statements exit_cycle END LOOP SEMI;
 
+/* An exit condition for a loop. */
 exit_cycle 			::= EXIT WHEN condition SEMI |; // TODO: check exit state
 
+/* An if-then-else statement. */
 if_statements 		::= IF condition THEN body_statements elsif_statements else_statements END IF SEMI; // done
 
+/* An elsif branch of an if statement. */
 elsif_statements 	::= ELSIF condition THEN body_statements elsif_statements|; // done
 
+/* An else branch of an if statement. */
 else_statements		::= ELSE body_statements|; // done
 
+/* A boolean condition. */
 condition			::= boolean_expression OR condition
 						| boolean_expression AND condition
 						| boolean_expression XOR condition
 						| boolean_expression; // done
 
+/* A boolean expression. */
 boolean_expression	::= operand COMPARE operand; // done
 
-operand				::= IDENTIFIER 
+/* An operand in a boolean expression. */
+operand				::= IDENTIFIER
 						| number_format
 						| call_subprogram; // done
 
+/* A call to a subprogram (function). */
 call_subprogram		::= IDENTIFIER:id {: param.clear(); :} OPARENTHESIS parameter_values CPARENTHESIS
-							{:	
+							{:
 								//System.out.println(functions.toString() + " ***FUNCTIONS***");
 								//System.out.println("%%%% " + param.toString() + "%%%%");
 								boolean satisfied = false;
@@ -343,6 +456,7 @@ call_subprogram		::= IDENTIFIER:id {: param.clear(); :} OPARENTHESIS parameter_v
 								param.clear();
 							:};
 
+/* The values passed as parameters in a subprogram call. */
 parameter_values	::= IDENTIFIER:id COMMA parameter_values
 							{: param.add(getTypeOf(id)); :}
 						| IDENTIFIER:id
