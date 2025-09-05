@@ -36,7 +36,7 @@ public class Parser extends java_cup.runtime.lr_parser {
   public Parser(java_cup.runtime.Scanner s, java_cup.runtime.SymbolFactory sf) {super(s,sf);}
 
   /** Production table. */
-  protected static final short _production_table[][] = 
+  protected static final short _production_table[][] =
     unpackFromStrings(new String[] {
     "\000\135\000\002\002\006\000\002\002\004\000\002\005" +
     "\010\000\002\005\007\000\002\032\006\000\002\033\003" +
@@ -72,7 +72,7 @@ public class Parser extends java_cup.runtime.lr_parser {
   public short[][] production_table() {return _production_table;}
 
   /** Parse-action table. */
-  protected static final short[][] _action_table = 
+  protected static final short[][] _action_table =
     unpackFromStrings(new String[] {
     "\000\312\000\004\063\004\001\002\000\004\153\007\001" +
     "\002\000\004\002\006\001\002\000\004\002\000\001\002" +
@@ -242,7 +242,7 @@ public class Parser extends java_cup.runtime.lr_parser {
   public short[][] action_table() {return _action_table;}
 
   /** <code>reduce_goto</code> table. */
-  protected static final short[][] _reduce_table = 
+  protected static final short[][] _reduce_table =
     unpackFromStrings(new String[] {
     "\000\312\000\004\002\004\001\001\000\002\001\001\000" +
     "\002\001\001\000\002\001\001\000\002\001\001\000\014" +
@@ -388,10 +388,10 @@ public class Parser extends java_cup.runtime.lr_parser {
 //@@CUPDBG1
 
 
-  for (DataType dt : DataType.values()) 
+  for (DataType dt : DataType.values())
 	  variables.put(dt, new HashMap<String, Object>());
-  
-  for (DataType dt : DataType.values()) 
+
+  for (DataType dt : DataType.values())
 	  functions.put(dt, new HashMap<String, ArrayList<DataType>>());
 
   ComplexSymbolFactory c = new ComplexSymbolFactory();
@@ -402,7 +402,7 @@ public class Parser extends java_cup.runtime.lr_parser {
     fis = new FileInputStream(file);
   } catch (IOException e) {
     e.printStackTrace();
-  } 
+  }
   lexer = new Lexer(c,fis);
 
     }
@@ -412,7 +412,7 @@ public class Parser extends java_cup.runtime.lr_parser {
     throws java.lang.Exception
     {
 //@@CUPDBG3
- return lexer.next_token(); 
+ return lexer.next_token();
     }
 
 //@@CUPDBG0
@@ -420,7 +420,10 @@ public class Parser extends java_cup.runtime.lr_parser {
   protected Lexer lexer;
   protected HashMap<DataType, HashMap<String, Object>> variables = new HashMap<DataType, HashMap<String, Object>>();
   protected HashMap<DataType, HashMap<String, ArrayList<DataType>>> functions = new HashMap<DataType, HashMap<String,ArrayList<DataType>>>();
-  
+
+  /**
+   * Enum representing the data types supported by the language.
+   */
   enum DataType{
 	  INT_ADA, FLOAT_ADA, STRING_ADA, BOOL_ADA, CHAR_ADA;
   }
@@ -432,19 +435,42 @@ class CUP$Parser$actions {
 
 //@@CUPDBG2
 
+    /** The current data type being processed by the parser. Defaults to BOOL_ADA. */
 	protected DataType type = DataType.BOOL_ADA;
+    /** A list of data types for the parameters of a function being declared or called. */
 	protected ArrayList<DataType> param = new ArrayList<DataType>();
+    /** The name of the function or variable currently being processed. */
 	protected String gbName;
-	protected DataType gbReturnType, gbType;
+    /** The return type of a function being declared. */
+	protected DataType gbReturnType;
+    /** The data type of a variable or expression being processed. */
+    protected DataType gbType;
+    /** A list of parameter types for a function being declared. */
 	protected ArrayList<DataType> gbParameters = new ArrayList<DataType>();
+    /** A list of parameter names for a function being declared. */
 	protected ArrayList<String> paramList = new ArrayList<String>();
+    /** The content or value of a variable or expression. */
 	protected Object gbContent;
 
+    /**
+     * Declares a function by storing its name, return type, and parameter types.
+     *
+     * @param name The name of the function.
+     * @param returnType The return type of the function.
+     * @param parameters A list of data types for the function's parameters.
+     */
 	public void declareFunction(String name, DataType returnType, ArrayList<DataType> parameters) {
 		//System.out.println("$$$ " + returnType + " " +name + " function declared " + parameters.toString());
 		functions.get(returnType).put(name, parameters);
 	}
-	
+
+    /**
+     * Checks if a function has been declared with a specific signature.
+     *
+     * @param name The name of the function to check.
+     * @param parameters A list of data types for the function's parameters.
+     * @return {@code true} if the function is declared with the given signature, {@code false} otherwise.
+     */
 	public boolean functionIsDeclared(String name, ArrayList<DataType> parameters) {
 		for (DataType declaredReturnType : DataType.values()) {
 			for (Map.Entry<String, ArrayList<DataType>> eachFunction : functions.get(declaredReturnType).entrySet()) {
@@ -464,6 +490,13 @@ class CUP$Parser$actions {
 		return false;
 	}
 
+    /**
+     * Declares a variable by storing its type, name, and initial value in the symbol table.
+     *
+     * @param dt The data type of the variable.
+     * @param name The name of the variable.
+     * @param value The initial value of the variable.
+     */
 	public void declareVariable(DataType dt, String name, Object value) {
 		System.out.println(name + " declared as " + dt + " = " + value);
 		switch (dt) {
@@ -487,32 +520,64 @@ class CUP$Parser$actions {
 		}
 	}
 
+    /**
+     * Checks if two variables have the same data type.
+     *
+     * @param first The name of the first variable.
+     * @param second The name of the second variable.
+     * @return {@code true} if both variables are declared and have the same type, {@code false} otherwise.
+     */
 	public boolean inSameType(String first, String second) {
 		for (DataType dt : DataType.values()) {
 			if(variables.get(dt).containsKey(first) && variables.get(dt).containsKey(second))
 				return true;
-		}	
+		}
 		return false;
 	}
 
+    /**
+     * Checks if a variable is of a specific data type.
+     *
+     * @param name The name of the variable.
+     * @param dt The data type to check against.
+     * @return {@code true} if the variable is declared with the specified type, {@code false} otherwise.
+     */
 	public boolean checkType(String name, DataType dt) {
 		return variables.get(dt).containsKey(name);
 	}
 
+    /**
+     * Checks if a variable has been declared.
+     *
+     * @param name The name of the variable to check.
+     * @return {@code true} if the variable is found in the symbol table, {@code false} otherwise.
+     */
 	public boolean declaredBefore(String name) {
 		for (DataType dt : DataType.values()) {
 			if(variables.get(dt).containsKey(name))
 				return true;
-		}	
+		}
 		return false;
 	}
-	
+
+    /**
+     * Assigns a new value to a declared variable.
+     *
+     * @param name The name of the variable.
+     * @param value The new value to assign.
+     */
 	public void assignVariable(String name, Object value) {
 		for (DataType dt : DataType.values()) {
 			variables.get(dt).replace(name, value);
 		}
 	}
 
+    /**
+     * Retrieves the data type of a declared variable.
+     *
+     * @param name The name of the variable.
+     * @return The {@link DataType} of the variable, or {@code null} if the variable is not found.
+     */
 	public DataType getTypeOf(String name) {
 		for (DataType dt : DataType.values()) {
 			if(variables.get(dt).containsKey(name))
@@ -543,19 +608,19 @@ class CUP$Parser$actions {
       switch (CUP$Parser$act_num)
         {
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 0: // main_body ::= PROCEDURE IDENTIFIER IS main_statements 
+          case 0: // main_body ::= PROCEDURE IDENTIFIER IS main_statements
             {
               Object RESULT =null;
 		//@@CUPDBG4
-	System.out.println("parsed successfully"); 
+	System.out.println("parsed successfully");
 								System.out.println(variables.toString());
-								System.out.println(functions.toString()); 
+								System.out.println(functions.toString());
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("main_body",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 1: // $START ::= main_body EOF 
+          case 1: // $START ::= main_body EOF
             {
               Object RESULT =null;
 		Location start_valxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).xleft;
@@ -569,7 +634,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 2: // main_statements ::= primary_statements BEGIN body_statements END IDENTIFIER SEMI 
+          case 2: // main_statements ::= primary_statements BEGIN body_statements END IDENTIFIER SEMI
             {
               Object RESULT =null;
 
@@ -578,7 +643,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 3: // main_statements ::= BEGIN body_statements END IDENTIFIER SEMI 
+          case 3: // main_statements ::= BEGIN body_statements END IDENTIFIER SEMI
             {
               Object RESULT =null;
 
@@ -587,85 +652,85 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 4: // put_statements ::= PUT OPARENTHESIS put_content CPARENTHESIS 
+          case 4: // put_statements ::= PUT OPARENTHESIS put_content CPARENTHESIS
             {
               Object RESULT =null;
 		Location pxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).xleft;
 		Location pxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).xright;
 		Object p = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		//@@CUPDBG5
- System.out.println("##### " + p + " #####"); 
+ System.out.println("##### " + p + " #####");
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("put_statements",24, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 5: // put_content ::= number_format 
+          case 5: // put_content ::= number_format
             {
               Object RESULT =null;
 		Location nfxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location nfxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		Object nf = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		//@@CUPDBG6
- RESULT = nf; 
+ RESULT = nf;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("put_content",25, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 6: // put_content ::= STR 
+          case 6: // put_content ::= STR
             {
               Object RESULT =null;
 		Location sxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location sxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		String s = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		//@@CUPDBG7
- RESULT = s; 
+ RESULT = s;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("put_content",25, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 7: // NT$0 ::= 
+          case 7: // NT$0 ::=
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 //@@CUPDBG8
- gbName = id; 
+ gbName = id;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("NT$0",36, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 8: // NT$1 ::= 
+          case 8: // NT$1 ::=
             {
               Object RESULT =(Object) ((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 //@@CUPDBG9
- gbParameters = param; 
+ gbParameters = param;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("NT$1",37, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 9: // NT$2 ::= 
+          case 9: // NT$2 ::=
             {
               Object RESULT =(Object) ((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-5)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-5)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-5)).value;
 //@@CUPDBG10
- gbReturnType = type; 
+ gbReturnType = type;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("NT$2",38, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 10: // func_statements ::= FUNCTION IDENTIFIER NT$0 arguments NT$1 RETURN ada_type NT$2 IS primary_statements BEGIN body_statements END SEMI 
+          case 10: // func_statements ::= FUNCTION IDENTIFIER NT$0 arguments NT$1 RETURN ada_type NT$2 IS primary_statements BEGIN body_statements END SEMI
             {
               Object RESULT =null;
               // propagate RESULT from NT$2
@@ -674,13 +739,13 @@ class CUP$Parser$actions {
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-12)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-12)).value;
 		//@@CUPDBG11
- declareFunction(gbName, gbReturnType, new ArrayList<DataType>(gbParameters)); 
+ declareFunction(gbName, gbReturnType, new ArrayList<DataType>(gbParameters));
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("func_statements",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-13)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 11: // arguments ::= OPARENTHESIS declare_arguments CPARENTHESIS 
+          case 11: // arguments ::= OPARENTHESIS declare_arguments CPARENTHESIS
             {
               Object RESULT =null;
 
@@ -689,7 +754,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 12: // NT$3 ::= 
+          case 12: // NT$3 ::=
             {
               Object RESULT =null;
 //@@CUPDBG12
@@ -698,13 +763,13 @@ class CUP$Parser$actions {
 									param.add(type);
 								}
 								paramList.clear();
-							
+
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("NT$3",39, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 13: // declare_arguments ::= identifiers_list COLON ada_type SEMI NT$3 declare_arguments 
+          case 13: // declare_arguments ::= identifiers_list COLON ada_type SEMI NT$3 declare_arguments
             {
               Object RESULT =null;
               // propagate RESULT from NT$3
@@ -715,7 +780,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 14: // declare_arguments ::= identifiers_list COLON ada_type 
+          case 14: // declare_arguments ::= identifiers_list COLON ada_type
             {
               Object RESULT =null;
 		//@@CUPDBG13
@@ -724,89 +789,89 @@ class CUP$Parser$actions {
 									param.add(type);
 								}
 								paramList.clear();
-							
+
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("declare_arguments",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 15: // identifiers_list ::= IDENTIFIER COMMA identifiers_list 
+          case 15: // identifiers_list ::= IDENTIFIER COMMA identifiers_list
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 		//@@CUPDBG14
-	paramList.add(id); 
+	paramList.add(id);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("identifiers_list",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 16: // identifiers_list ::= IDENTIFIER 
+          case 16: // identifiers_list ::= IDENTIFIER
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		//@@CUPDBG15
-	paramList.add(id); 
+	paramList.add(id);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("identifiers_list",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 17: // ada_type ::= INT 
+          case 17: // ada_type ::= INT
             {
               Object RESULT =null;
 		//@@CUPDBG16
- type = DataType.INT_ADA; 
+ type = DataType.INT_ADA;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ada_type",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 18: // ada_type ::= FLOAT 
+          case 18: // ada_type ::= FLOAT
             {
               Object RESULT =null;
 		//@@CUPDBG17
- type = DataType.FLOAT_ADA; 
+ type = DataType.FLOAT_ADA;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ada_type",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 19: // ada_type ::= BOOLEAN 
+          case 19: // ada_type ::= BOOLEAN
             {
               Object RESULT =null;
 		//@@CUPDBG18
- type = DataType.BOOL_ADA; 
+ type = DataType.BOOL_ADA;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ada_type",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 20: // ada_type ::= STR_TYP 
+          case 20: // ada_type ::= STR_TYP
             {
               Object RESULT =null;
 		//@@CUPDBG19
- type = DataType.STRING_ADA; 
+ type = DataType.STRING_ADA;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ada_type",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 21: // ada_type ::= CHAR 
+          case 21: // ada_type ::= CHAR
             {
               Object RESULT =null;
 		//@@CUPDBG20
- type = DataType.CHAR_ADA; 
+ type = DataType.CHAR_ADA;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ada_type",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 22: // primary_statements ::= declare_variables primary_statements 
+          case 22: // primary_statements ::= declare_variables primary_statements
             {
               Object RESULT =null;
 
@@ -815,7 +880,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 23: // primary_statements ::= declare_variables 
+          case 23: // primary_statements ::= declare_variables
             {
               Object RESULT =null;
 
@@ -824,7 +889,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 24: // primary_statements ::= declare_array primary_statements 
+          case 24: // primary_statements ::= declare_array primary_statements
             {
               Object RESULT =null;
 
@@ -833,7 +898,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 25: // primary_statements ::= declare_array 
+          case 25: // primary_statements ::= declare_array
             {
               Object RESULT =null;
 
@@ -842,7 +907,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 26: // primary_statements ::= func_statements primary_statements 
+          case 26: // primary_statements ::= func_statements primary_statements
             {
               Object RESULT =null;
 
@@ -851,7 +916,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 27: // primary_statements ::= func_statements 
+          case 27: // primary_statements ::= func_statements
             {
               Object RESULT =null;
 
@@ -860,33 +925,33 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 28: // declare_variables ::= IDENTIFIER COMMA declare_variables 
+          case 28: // declare_variables ::= IDENTIFIER COMMA declare_variables
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 		//@@CUPDBG21
-	declareVariable(type, id, null); 
+	declareVariable(type, id, null);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("declare_variables",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 29: // declare_variables ::= IDENTIFIER COLON ada_type SEMI 
+          case 29: // declare_variables ::= IDENTIFIER COLON ada_type SEMI
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-3)).value;
 		//@@CUPDBG22
-	declareVariable(type, id, null); 
+	declareVariable(type, id, null);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("declare_variables",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 30: // declare_array ::= IDENTIFIER COLON ARRAY OPARENTHESIS array_dim CPARENTHESIS OF ada_type SEMI 
+          case 30: // declare_array ::= IDENTIFIER COLON ARRAY OPARENTHESIS array_dim CPARENTHESIS OF ada_type SEMI
             {
               Object RESULT =null;
 
@@ -895,7 +960,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 31: // array_dim ::= ada_type 
+          case 31: // array_dim ::= ada_type
             {
               Object RESULT =null;
 
@@ -904,7 +969,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 32: // array_dim ::= number_format DOUBLE_DOT number_format 
+          case 32: // array_dim ::= number_format DOUBLE_DOT number_format
             {
               Object RESULT =null;
 
@@ -913,7 +978,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 33: // number_format ::= DECIMAL_LITERAL 
+          case 33: // number_format ::= DECIMAL_LITERAL
             {
               Object RESULT =null;
 		Location dlxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
@@ -922,28 +987,28 @@ class CUP$Parser$actions {
 		//@@CUPDBG23
 	type = DataType.INT_ADA;
 								gbContent = dl;
-								RESULT = dl; 
+								RESULT = dl;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("number_format",13, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 34: // number_format ::= BASED_LITERAL 
+          case 34: // number_format ::= BASED_LITERAL
             {
               Object RESULT =null;
 		Location blxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location blxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		String bl = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		//@@CUPDBG24
-	type = DataType.INT_ADA; 
+	type = DataType.INT_ADA;
 								gbContent = bl;
-								RESULT = bl; 
+								RESULT = bl;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("number_format",13, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 35: // body_statements ::= assignment body_statements 
+          case 35: // body_statements ::= assignment body_statements
             {
               Object RESULT =null;
 
@@ -952,7 +1017,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 36: // body_statements ::= assignment 
+          case 36: // body_statements ::= assignment
             {
               Object RESULT =null;
 
@@ -961,7 +1026,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 37: // body_statements ::= call_subprogram SEMI body_statements 
+          case 37: // body_statements ::= call_subprogram SEMI body_statements
             {
               Object RESULT =null;
 
@@ -970,7 +1035,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 38: // body_statements ::= call_subprogram SEMI 
+          case 38: // body_statements ::= call_subprogram SEMI
             {
               Object RESULT =null;
 
@@ -979,7 +1044,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 39: // body_statements ::= put_statements SEMI body_statements 
+          case 39: // body_statements ::= put_statements SEMI body_statements
             {
               Object RESULT =null;
 
@@ -988,7 +1053,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 40: // body_statements ::= put_statements SEMI 
+          case 40: // body_statements ::= put_statements SEMI
             {
               Object RESULT =null;
 
@@ -997,7 +1062,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 41: // body_statements ::= if_statements body_statements 
+          case 41: // body_statements ::= if_statements body_statements
             {
               Object RESULT =null;
 
@@ -1006,7 +1071,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 42: // body_statements ::= if_statements 
+          case 42: // body_statements ::= if_statements
             {
               Object RESULT =null;
 
@@ -1015,7 +1080,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 43: // body_statements ::= loop_statements body_statements 
+          case 43: // body_statements ::= loop_statements body_statements
             {
               Object RESULT =null;
 
@@ -1024,7 +1089,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 44: // body_statements ::= loop_statements 
+          case 44: // body_statements ::= loop_statements
             {
               Object RESULT =null;
 
@@ -1033,7 +1098,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 45: // body_statements ::= for_statements body_statements 
+          case 45: // body_statements ::= for_statements body_statements
             {
               Object RESULT =null;
 
@@ -1042,7 +1107,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 46: // body_statements ::= for_statements 
+          case 46: // body_statements ::= for_statements
             {
               Object RESULT =null;
 
@@ -1051,7 +1116,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 47: // body_statements ::= while_statements body_statements 
+          case 47: // body_statements ::= while_statements body_statements
             {
               Object RESULT =null;
 
@@ -1060,7 +1125,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 48: // body_statements ::= while_statements 
+          case 48: // body_statements ::= while_statements
             {
               Object RESULT =null;
 
@@ -1069,7 +1134,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 49: // assignment ::= IDENTIFIER ASSIGNMENT math_expression SEMI 
+          case 49: // assignment ::= IDENTIFIER ASSIGNMENT math_expression SEMI
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).xleft;
@@ -1077,26 +1142,26 @@ class CUP$Parser$actions {
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-3)).value;
 		//@@CUPDBG25
 	type = getTypeOf(id);
-								assignVariable(id, gbContent); 
+								assignVariable(id, gbContent);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("assignment",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 50: // assignment ::= IDENTIFIER ASSIGNMENT call_subprogram SEMI 
+          case 50: // assignment ::= IDENTIFIER ASSIGNMENT call_subprogram SEMI
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-3)).value;
 		//@@CUPDBG26
-	type = getTypeOf(id); 
+	type = getTypeOf(id);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("assignment",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 51: // assignment ::= IDENTIFIER ASSIGNMENT STR SEMI 
+          case 51: // assignment ::= IDENTIFIER ASSIGNMENT STR SEMI
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).xleft;
@@ -1115,13 +1180,13 @@ class CUP$Parser$actions {
 								} else {
 									System.err.println(id + " at line " + line + " is not string");
 								}
-							
+
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("assignment",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 52: // assignment ::= IDENTIFIER ASSIGNMENT TRUE SEMI 
+          case 52: // assignment ::= IDENTIFIER ASSIGNMENT TRUE SEMI
             {
               Object RESULT =null;
 
@@ -1130,7 +1195,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 53: // assignment ::= IDENTIFIER ASSIGNMENT FALSE SEMI 
+          case 53: // assignment ::= IDENTIFIER ASSIGNMENT FALSE SEMI
             {
               Object RESULT =null;
 
@@ -1139,7 +1204,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 54: // math_expression ::= a b 
+          case 54: // math_expression ::= a b
             {
               Object RESULT =null;
 
@@ -1148,7 +1213,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 55: // b ::= low_lvl_op a b 
+          case 55: // b ::= low_lvl_op a b
             {
               Object RESULT =null;
 
@@ -1157,7 +1222,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 56: // b ::= 
+          case 56: // b ::=
             {
               Object RESULT =null;
 
@@ -1166,7 +1231,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 57: // a ::= c d 
+          case 57: // a ::= c d
             {
               Object RESULT =null;
 
@@ -1175,7 +1240,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 58: // d ::= high_lvl_op c d 
+          case 58: // d ::= high_lvl_op c d
             {
               Object RESULT =null;
 
@@ -1184,7 +1249,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 59: // d ::= 
+          case 59: // d ::=
             {
               Object RESULT =null;
 
@@ -1193,7 +1258,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 60: // low_lvl_op ::= PLUS 
+          case 60: // low_lvl_op ::= PLUS
             {
               Object RESULT =null;
 
@@ -1202,7 +1267,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 61: // low_lvl_op ::= MINUS 
+          case 61: // low_lvl_op ::= MINUS
             {
               Object RESULT =null;
 
@@ -1211,7 +1276,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 62: // high_lvl_op ::= TIMES 
+          case 62: // high_lvl_op ::= TIMES
             {
               Object RESULT =null;
 
@@ -1220,7 +1285,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 63: // high_lvl_op ::= SLASH 
+          case 63: // high_lvl_op ::= SLASH
             {
               Object RESULT =null;
 
@@ -1229,7 +1294,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 64: // c ::= IDENTIFIER 
+          case 64: // c ::= IDENTIFIER
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
@@ -1240,13 +1305,13 @@ class CUP$Parser$actions {
 									System.err.println(id + " should be " + type);
 								}
 								gbContent = id;
-							
+
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("c",19, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 65: // c ::= number_format 
+          case 65: // c ::= number_format
             {
               Object RESULT =null;
 
@@ -1255,7 +1320,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 66: // c ::= OPARENTHESIS math_expression CPARENTHESIS 
+          case 66: // c ::= OPARENTHESIS math_expression CPARENTHESIS
             {
               Object RESULT =null;
 
@@ -1264,7 +1329,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 67: // loop_statements ::= LOOP body_statements exit_cycle END LOOP SEMI 
+          case 67: // loop_statements ::= LOOP body_statements exit_cycle END LOOP SEMI
             {
               Object RESULT =null;
 
@@ -1273,7 +1338,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 68: // for_statements ::= FOR IDENTIFIER IN number_format DOUBLE_DOT number_format LOOP body_statements exit_cycle END LOOP SEMI 
+          case 68: // for_statements ::= FOR IDENTIFIER IN number_format DOUBLE_DOT number_format LOOP body_statements exit_cycle END LOOP SEMI
             {
               Object RESULT =null;
 
@@ -1282,7 +1347,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 69: // while_statements ::= WHILE condition LOOP body_statements exit_cycle END LOOP SEMI 
+          case 69: // while_statements ::= WHILE condition LOOP body_statements exit_cycle END LOOP SEMI
             {
               Object RESULT =null;
 
@@ -1291,7 +1356,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 70: // exit_cycle ::= EXIT WHEN condition SEMI 
+          case 70: // exit_cycle ::= EXIT WHEN condition SEMI
             {
               Object RESULT =null;
 
@@ -1300,7 +1365,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 71: // exit_cycle ::= 
+          case 71: // exit_cycle ::=
             {
               Object RESULT =null;
 
@@ -1309,7 +1374,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 72: // if_statements ::= IF condition THEN body_statements elsif_statements else_statements END IF SEMI 
+          case 72: // if_statements ::= IF condition THEN body_statements elsif_statements else_statements END IF SEMI
             {
               Object RESULT =null;
 
@@ -1318,7 +1383,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 73: // elsif_statements ::= ELSIF condition THEN body_statements elsif_statements 
+          case 73: // elsif_statements ::= ELSIF condition THEN body_statements elsif_statements
             {
               Object RESULT =null;
 
@@ -1327,7 +1392,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 74: // elsif_statements ::= 
+          case 74: // elsif_statements ::=
             {
               Object RESULT =null;
 
@@ -1336,7 +1401,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 75: // else_statements ::= ELSE body_statements 
+          case 75: // else_statements ::= ELSE body_statements
             {
               Object RESULT =null;
 
@@ -1345,7 +1410,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 76: // else_statements ::= 
+          case 76: // else_statements ::=
             {
               Object RESULT =null;
 
@@ -1354,7 +1419,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 77: // condition ::= boolean_expression OR condition 
+          case 77: // condition ::= boolean_expression OR condition
             {
               Object RESULT =null;
 
@@ -1363,7 +1428,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 78: // condition ::= boolean_expression AND condition 
+          case 78: // condition ::= boolean_expression AND condition
             {
               Object RESULT =null;
 
@@ -1372,7 +1437,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 79: // condition ::= boolean_expression XOR condition 
+          case 79: // condition ::= boolean_expression XOR condition
             {
               Object RESULT =null;
 
@@ -1381,7 +1446,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 80: // condition ::= boolean_expression 
+          case 80: // condition ::= boolean_expression
             {
               Object RESULT =null;
 
@@ -1390,7 +1455,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 81: // boolean_expression ::= operand COMPARE operand 
+          case 81: // boolean_expression ::= operand COMPARE operand
             {
               Object RESULT =null;
 
@@ -1399,7 +1464,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 82: // operand ::= IDENTIFIER 
+          case 82: // operand ::= IDENTIFIER
             {
               Object RESULT =null;
 
@@ -1408,7 +1473,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 83: // operand ::= number_format 
+          case 83: // operand ::= number_format
             {
               Object RESULT =null;
 
@@ -1417,7 +1482,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 84: // operand ::= call_subprogram 
+          case 84: // operand ::= call_subprogram
             {
               Object RESULT =null;
 
@@ -1426,20 +1491,20 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 85: // NT$4 ::= 
+          case 85: // NT$4 ::=
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 //@@CUPDBG29
- param.clear(); 
+ param.clear();
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("NT$4",40, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 86: // call_subprogram ::= IDENTIFIER NT$4 OPARENTHESIS parameter_values CPARENTHESIS 
+          case 86: // call_subprogram ::= IDENTIFIER NT$4 OPARENTHESIS parameter_values CPARENTHESIS
             {
               Object RESULT =null;
               // propagate RESULT from NT$4
@@ -1448,7 +1513,7 @@ class CUP$Parser$actions {
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-4)).value;
 		//@@CUPDBG30
-	
+
 								//System.out.println(functions.toString() + " ***FUNCTIONS***");
 								//System.out.println("%%%% " + param.toString() + "%%%%");
 								boolean satisfied = false;
@@ -1458,73 +1523,73 @@ class CUP$Parser$actions {
 								if(!satisfied)
 									System.err.println(id + " is not declared in this style");
 								param.clear();
-							
+
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("call_subprogram",22, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 87: // parameter_values ::= IDENTIFIER COMMA parameter_values 
+          case 87: // parameter_values ::= IDENTIFIER COMMA parameter_values
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 		//@@CUPDBG31
- param.add(getTypeOf(id)); 
+ param.add(getTypeOf(id));
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("parameter_values",23, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 88: // parameter_values ::= IDENTIFIER 
+          case 88: // parameter_values ::= IDENTIFIER
             {
               Object RESULT =null;
 		Location idxleft = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xleft;
 		Location idxright = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol)CUP$Parser$stack.peek()).xright;
 		String id = (String)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		//@@CUPDBG32
- param.add(getTypeOf(id)); 
+ param.add(getTypeOf(id));
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("parameter_values",23, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 89: // parameter_values ::= number_format COMMA parameter_values 
+          case 89: // parameter_values ::= number_format COMMA parameter_values
             {
               Object RESULT =null;
 		//@@CUPDBG33
- param.add(type); 
+ param.add(type);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("parameter_values",23, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 90: // parameter_values ::= number_format 
+          case 90: // parameter_values ::= number_format
             {
               Object RESULT =null;
 		//@@CUPDBG34
- param.add(type); 
+ param.add(type);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("parameter_values",23, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 91: // parameter_values ::= STR COMMA parameter_values 
+          case 91: // parameter_values ::= STR COMMA parameter_values
             {
               Object RESULT =null;
 		//@@CUPDBG35
- param.add(DataType.STRING_ADA); 
+ param.add(DataType.STRING_ADA);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("parameter_values",23, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 92: // parameter_values ::= STR 
+          case 92: // parameter_values ::= STR
             {
               Object RESULT =null;
 		//@@CUPDBG36
- param.add(DataType.STRING_ADA); 
+ param.add(DataType.STRING_ADA);
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("parameter_values",23, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;

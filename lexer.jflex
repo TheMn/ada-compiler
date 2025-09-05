@@ -1,3 +1,8 @@
+/**
+ * This JFlex file defines the lexical scanner for a subset of the Ada programming language.
+ * It identifies keywords, identifiers, literals (decimal, based, string), operators,
+ * and comments, and produces tokens to be consumed by the CUP parser.
+ */
 package cup.example;
 import java_cup.runtime.ComplexSymbolFactory;
 import java_cup.runtime.ComplexSymbolFactory.Location;
@@ -17,68 +22,124 @@ import java.io.InputStreamReader;
 %char
 %{
 
-	StringBuilder string_content = new StringBuilder();
+	private StringBuilder string_content = new StringBuilder();
+    private ComplexSymbolFactory symbolFactory;
 
+    /**
+     * Creates a new Lexer.
+     *
+     * @param sf The ComplexSymbolFactory to use for creating symbols.
+     * @param is The InputStream to read from.
+     */
     public Lexer(ComplexSymbolFactory sf, java.io.InputStream is){
 		this(is);
         symbolFactory = sf;
     }
+
+    /**
+     * Creates a new Lexer.
+     *
+     * @param sf The ComplexSymbolFactory to use for creating symbols.
+     * @param reader The Reader to read from.
+     */
 	public Lexer(ComplexSymbolFactory sf, java.io.Reader reader){
 		this(reader);
         symbolFactory = sf;
     }
     
-    private StringBuffer sb;
-    private ComplexSymbolFactory symbolFactory;
-    private int csline,cscolumn;
-
+    /**
+     * Creates a symbol with a given name and code.
+     *
+     * @param name The name of the symbol.
+     * @param code The code of the symbol.
+     * @return The created Symbol object.
+     */
     public Symbol symbol(String name, int code){
 		return symbolFactory.newSymbol(name, code,
 						new Location(yyline+1,yycolumn+1, yychar), // -yylength()
 						new Location(yyline+1,yycolumn+yylength(), yychar+yylength())
 				);
     }
+
+    /**
+     * Creates a symbol with a given name, code, and lexeme.
+     *
+     * @param name The name of the symbol.
+     * @param code The code of the symbol.
+     * @param lexem The lexeme of the symbol.
+     * @return The created Symbol object.
+     */
     public Symbol symbol(String name, int code, String lexem){
 	return symbolFactory.newSymbol(name, code, 
 						new Location(yyline+1, yycolumn +1, yychar), 
 						new Location(yyline+1,yycolumn+yylength(), yychar+yylength()), lexem);
     }
     
+    /**
+     * Prints a warning message to the console.
+     *
+     * @param message The warning message to print.
+     */
     protected void emit_warning(String message){
     	System.out.println("scanner warning: " + message + " at : 2 "+ 
     			(yyline+1) + " " + (yycolumn+1) + " " + yychar);
     }
     
+    /**
+     * Prints an error message to the console.
+     *
+     * @param message The error message to print.
+     */
     protected void emit_error(String message){
     	System.out.println("scanner error: " + message + " at : 2" + 
     			(yyline+1) + " " + (yycolumn+1) + " " + yychar);
     }
 %}
 
+/*
+ * Macro definitions for common patterns.
+ */
+
+/* Newline and whitespace characters. */
 Newline    = \r | \n | \r\n
 whitespace = [ \t\f] | {Newline}
 
+/* Single-line comments starting with "--". */
 comment = "--" [^\r\n]* 
 
+/* Digits for numeric literals. */
 digit = [0-9]
+
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Decimal Literals ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/* A sequence of digits, possibly with underscores. */
 numeral = {digit} ("_" {digit} | {digit})*
+/* An exponent part for scientific notation. */
 exponent = [Ee] "+" {numeral} | [Ee] {numeral} | [Ee] "-" {numeral}
+/* A decimal literal, which can be an integer or a float. */
 decimal_literal = {integer_literal} | {float_literal}
+/* An integer literal. */
 integer_literal = {numeral} {exponent}?
+/* A floating-point literal. */
 float_literal = {numeral} "." {numeral} {exponent}?
 
+/* Extended digits for based literals (e.g., hexadecimal). */
 extended_digit = {digit} | [A-F] | [a-f]
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Based Literals ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/* A numeral in a specific base. */
 based_numeral = {extended_digit} (("_")? {extended_digit})*
+/* A based literal, e.g., 16#FF#. */
 based_literal = {numeral} "#" {based_numeral} ("." {based_numeral})? "#" {exponent}?
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Identifiers ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/* A single letter. */
 letter = [a-zA-Z]
+/* An identifier, starting with a letter, followed by letters, digits, or underscores. */
 identifier = {letter} ("_"? ({letter} | {digit}))*
 
+/* Comparison operators. */
 compare = "=" | "/=" | "<" | "<=" | ">" | ">="
 
+/* Characters allowed within a string literal. */
 string_character = [^\r\n\"\\]
 
 %eofval{
@@ -96,6 +157,10 @@ string_character = [^\r\n\"\\]
 					string_content.setLength(0); }
 					
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Reserved words ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  /*
+   * The following rules match all the reserved keywords of the Ada subset.
+   * Each keyword returns a specific symbol from the `sym` class.
+   */
   "abort"			{return symbolFactory.newSymbol("ABORT", ABORT);}
   "abs"				{return symbolFactory.newSymbol("ABS", ABS);}
   "abstract"		{return symbolFactory.newSymbol("ABSTRACT", ABSTRACT);}
@@ -181,20 +246,32 @@ string_character = [^\r\n\"\\]
   "put"				{return symbolFactory.newSymbol("PUT", PUT);}
   "get"				{return symbolFactory.newSymbol("GET", GET);}
   
+  /* Ignore whitespace. */
   {whitespace} 		{ /* NOTHING */ }
   
+  /* Ignore comments. */
   {comment}			{ /* NOTHING */ }
   
-  /* 12  3.14159_26  1E6  123_456 */		
+  /*
+   * Match numeric literals.
+   * Examples: 12  3.14159_26  1E6  123_456
+   */
   {decimal_literal} {return symbolFactory.newSymbol("DECIMAL_LITERAL", DECIMAL_LITERAL, yytext());}
   
-  /* 16#F.FF#E+2  2#1111_1111#  016#0ff# */			
+  /*
+   * Match based literals.
+   * Examples: 16#F.FF#E+2  2#1111_1111#  016#0ff#
+   */
   {based_literal}	{return symbolFactory.newSymbol("BASED_LITERAL", BASED_LITERAL, yytext());}
    					
+  /* Match identifiers. */
   {identifier}		{return symbolFactory.newSymbol("IDENTIFIER", IDENTIFIER, yytext());}
   					// symbol(sym.IDENTIFIER, yytext())
 
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Separators, and Delimiters ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  /*
+   * The following rules match operators and delimiters.
+   */
   "=>"				{return symbolFactory.newSymbol("ARROW", ARROW);}
   ".."				{return symbolFactory.newSymbol("DOUBLE_DOT", DOUBLE_DOT);}
   "**"				{return symbolFactory.newSymbol("DOUBLE_STAR", DOUBLE_STAR);}
